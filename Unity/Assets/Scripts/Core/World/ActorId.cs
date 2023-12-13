@@ -1,22 +1,21 @@
-﻿using System;
-using System.Runtime.InteropServices;
-using MemoryPack;
-using MongoDB.Bson.Serialization.Attributes;
+using System;
 
 namespace ET
 {
-    [MemoryPackable]
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public partial struct Address
+    public interface IEqualityComparer<T>
     {
-        [MemoryPackOrder(0)]
+        bool Equals(T x, T y);
+        int GetHashCode(T obj);
+    }
+
+    public struct Address : IEquatable<Address>
+    {
         public int Process;
-        [MemoryPackOrder(1)]
         public int Fiber;
-        
+
         public bool Equals(Address other)
         {
-            return this.Process == other.Process && this.Fiber == other.Fiber;
+            return Process == other.Process && Fiber == other.Fiber;
         }
 
         public override bool Equals(object obj)
@@ -26,38 +25,37 @@ namespace ET
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.Process, this.Fiber);
+            return HashCode.Combine(Process, Fiber);
         }
-        
+
         public Address(int process, int fiber)
         {
-            this.Process = process;
-            this.Fiber = fiber;
-        }
-
-        public static bool operator ==(Address left, Address right)
-        {
-            return left.Process == right.Process && left.Fiber == right.Fiber;
-        }
-
-        public static bool operator !=(Address left, Address right)
-        {
-            return !(left == right);
-        }
-
-        public override string ToString()
-        {
-            return $"{this.Process}:{this.Fiber}";
+            Process = process;
+            Fiber = fiber;
         }
     }
-    
-    [MemoryPackable]
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public partial struct ActorId
+
+    public class AddressEqualityComparer : IEqualityComparer<Address>
     {
+        public bool Equals(Address x, Address y)
+        {
+            return x.Equals(y);
+        }
+
+        public int GetHashCode(Address obj)
+        {
+            return obj.GetHashCode();
+        }
+    }
+
+    public struct ActorId : IEquatable<ActorId>
+    {
+        public Address Address;
+        public long InstanceId;
+
         public bool Equals(ActorId other)
         {
-            return this.Address == other.Address && this.InstanceId == other.InstanceId;
+            return Address.Equals(other.Address) && InstanceId == other.InstanceId;
         }
 
         public override bool Equals(object obj)
@@ -67,75 +65,38 @@ namespace ET
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(this.Address, this.InstanceId);
+            return HashCode.Combine(Address, InstanceId);
         }
 
-        [MemoryPackOrder(0)]
-        public Address Address;
-        [MemoryPackOrder(1)]
-        public long InstanceId;
+        public ActorId(int process, int fiber) : this(new Address(process, fiber), 1)
+        {
+        }
 
-        [BsonIgnore]
-        public int Process
-        {
-            get
-            {
-                return this.Address.Process;
-            }
-            set
-            {
-                this.Address.Process = value;
-            }
-        }
-        
-        [BsonIgnore]
-        public int Fiber
-        {
-            get
-            {
-                return this.Address.Fiber;
-            }
-            set
-            {
-                this.Address.Fiber = value;
-            }
-        }
-        
-        public ActorId(int process, int fiber)
-        {
-            this.Address = new Address(process, fiber);
-            this.InstanceId = 1;
-        }
-        
-        public ActorId(int process, int fiber, long instanceId)
-        {
-            this.Address = new Address(process, fiber);
-            this.InstanceId = instanceId;
-        }
-        
-        public ActorId(Address address): this(address, 1)
+        public ActorId(int process, int fiber, long instanceId) : this(new Address(process, fiber), instanceId)
         {
         }
-        
+
+        public ActorId(Address address) : this(address, 1)
+        {
+        }
+
         public ActorId(Address address, long instanceId)
         {
-            this.Address = address;
-            this.InstanceId = instanceId;
+            Address = address;
+            InstanceId = instanceId;
+        }
+    }
+
+    public class ActorIdEqualityComparer : IEqualityComparer<ActorId>
+    {
+        public bool Equals(ActorId x, ActorId y)
+        {
+            return x.Equals(y);
         }
 
-        public static bool operator ==(ActorId left, ActorId right)
+        public int GetHashCode(ActorId obj)
         {
-            return left.InstanceId == right.InstanceId && left.Address == right.Address;
-        }
-
-        public static bool operator !=(ActorId left, ActorId right)
-        {
-            return !(left == right);
-        }
-
-        public override string ToString()
-        {
-            return $"{this.Process}:{this.Fiber}:{this.InstanceId}";
+            return obj.GetHashCode();
         }
     }
 }
